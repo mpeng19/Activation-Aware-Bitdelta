@@ -15,7 +15,6 @@ def get_dataset(dataset_name, subset, split, size=None):
     else:
         dataset = load_dataset(dataset_name, subset, streaming=True)[split]
         dataset = dataset.take(size)
-
     return dataset
 
 

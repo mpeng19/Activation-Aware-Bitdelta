@@ -7,7 +7,7 @@ from bitdelta.utils import get_model, parse_args, get_tokenizer
 from bitdelta.data import get_dataset
 from bitdelta.diff import load_diff
 
-device = "cuda" 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 args = parse_args()
 
@@ -21,22 +21,27 @@ dataset = get_dataset(
 
 text = ""
 for sample in tqdm(dataset):
-    text += sample["text"] + "\n\n"
+    if "text" in sample:
+        text += sample["text"] + "\n\n"
+    elif "content" in sample:
+        text += sample["content"] + "\n\n"
+    elif "sentence" in sample:
+        text += sample["sentence"] + "\n\n"
 
-print(text[:100])
+# print(text[:100])
 
 tokenizer = get_tokenizer(args.base_model)
 
 encodings = tokenizer(text, return_tensors="pt")
 
-print(tokenizer.decode(encodings.input_ids[0][:100]))
+# print(tokenizer.decode(encodings.input_ids[0][:100]))
 
 max_length = args.context_size + args.window_size
 stride = args.window_size
 seq_len = encodings.input_ids.size(1)
 # make seq_len a multiple of stride
 seq_len = seq_len - (seq_len % stride)
-print(f"seq_len: {seq_len}")
+# print(f"seq_len: {seq_len}")
 
 print(f"Loading model from {args.base_model}...")
 model = AutoModelForCausalLM.from_pretrained(

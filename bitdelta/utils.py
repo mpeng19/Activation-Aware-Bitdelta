@@ -6,6 +6,7 @@ from accelerate import infer_auto_device_map, init_empty_weights
 
 def parse_args():
     parser = argparse.ArgumentParser(description="BitDelta")
+    parser.add_argument("--num_groups", type=int, default=1, help="Number of groups for training")
     
     # models
     parser.add_argument(
@@ -14,7 +15,7 @@ def parse_args():
     parser.add_argument("--base_model", type=str, default="meta-llama/Llama-2-7b-hf")
 
     # train params
-    parser.add_argument("--dataset_name", type=str, default="c4")
+    parser.add_argument("--dataset_name", type=str, default="allenai/c4")
     parser.add_argument("--subset", type=str, default="en")
     parser.add_argument("--data_dir", type=str, default="en")
     parser.add_argument("--split", type=str, default="train")
@@ -23,7 +24,10 @@ def parse_args():
     parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--max_length", type=int, default=128)
     parser.add_argument("--save_dir", type=str, required=True)
-
+    
+    # Activation aware
+    parser.add_argument("--use_activation_aware", action="store_true", help="Use activation-aware initialization")
+    parser.add_argument("--num_calibration_samples", type=int, default=128, help="Number of samples for activation statistics")
 
     # device management
     parser.add_argument("--base_model_device", type=str, default="0")
@@ -80,20 +84,17 @@ def parse_device(device: str):
 def get_model(model_name, device, memory_map=None):
     # multi-gpu
     if device == "auto" or isinstance(device, list):
-        
-        # if gpus are specified, distributes according to the memory map
-        if isinstance(device, list):
-            assert memory_map is not None, "memory_map must be specified when using multiple gpus"
+        if memory_map is not None:
             config = AutoConfig.from_pretrained(model_name)
             with init_empty_weights():
                 model = AutoModelForCausalLM.from_config(config)
-
             device_map = infer_auto_device_map(model, memory_map, no_split_module_classes=["LlamaDecoderLayer"])
-
         else:
-            # use all available gpus
-            device_map = "auto"
-
+            # If no memory map but multiple GPUs, let HF handle distribution automatically
+            device_map = "auto" if device == "auto" else {
+                i: device[i] for i in range(len(device))
+            }
+        
         return transformers.AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.bfloat16,

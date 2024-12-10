@@ -97,6 +97,10 @@ CUDA_VISIBLE_DEVICES=0 python \
 
 ```
 
+### Activation-Aware Bitdelta
+
+A contribution by Michael Peng, Jessie (Ju Young) Lee, Sophia Chen, Emily Zhou, and Shrika Eddula for the 6.5940 final project allows initializing scale factors using activation statistics, avoiding end-to-end distillation. This can be be enabled by adding the `--use_activation_aware` flag.
+
 ### Replicate Results
 
 To replicate our other results, please use `--save_full_model` to run the model in Llama format for compatibility with eval harnesses.
